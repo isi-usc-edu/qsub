@@ -386,8 +386,8 @@ def generate_qb_estimates_json_files(resources, reynold_numbers, size, block_enc
             }
             qb_estimates["comments"] = "Verification instance: flow around a sphere at different Reynolds Numbers (Re).  Utility estimate: $0. Size is number of LBM grid points n."
 
-            with open(f"non_linear_diffeq_incompressible_CFD_sphere_re_{re}_{block_encoding_type}", "w") as json_file:
+            with open(f"../../QRE/CFD/2024-12/CFD_sphere_{block_encoding_type}_logRe_{re}.json", "w") as json_file:
                 json.dump(qb_estimates, json_file)
     
 
-generate_qb_estimates_json_files(resources, reynolds_numbers, size, "")
+generate_qb_estimates_json_files(resources, reynolds_numbers, size, "structured")

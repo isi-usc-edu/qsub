@@ -1,0 +1,17 @@
+{
+    "id": "Sphere-Re-1",
+    "name": "Incompressible-CFD",
+    "category": "scientific",
+    "size": 5.12e+3,
+    "task": "Estimate drag force with 0.05 failure tolerance",
+    "implementation": "CL-LBM + Berry2017 + PsiQuantum_QLSA + DragMeasurable",
+    "value": 0.0,
+    "repetitions": 1,
+    "logical-abstract": {
+      "num_qubits":  668,
+      "t_count": 2.819972160570656e+19
+    },
+    "timestamp":"2024-05-14T10:45:07.229423",
+    "uuid":"a1bfb29d-e60e-487b-a805-23519eabdb87",
+    "comments":"Verification instance: flow around a sphere at different Reynolds Numbers (Re).  Utility estimate: $0. Size is number of LBM grid points n."
+  }
