@@ -1,5 +1,6 @@
 # Module of helper functions
 import numpy as np
+import inspect
 
 def consume_fraction_of_error_budget(consumed_fraction, current_error_budget):
     # Takes in the current error budget and the amount to be consumed and outputs the amount consumed and the remaining error budget
@@ -16,7 +17,7 @@ def calculate_max_of_solution_norm(fluid_nodes, uniform_density_deviation):
 
 
 
-def num_grid_nodes(Reynolds, L_xyz, L_char):
+def num_grid_nodes(Reynolds, L_xyz, L_char=0.01):
     """
     Calculate the number of grid nodes for a given Reynolds number, domain dimensions, and characteristic length
 
@@ -61,3 +62,21 @@ try:
     print(f"The ratio is: {result}")
 except ValueError as e:
     print(e)
+
+
+
+def log_function_inputs(func):
+    """Decorator to log function calls and their arguments."""
+    def wrapper(*args, **kwargs):
+        # Get the function name
+        func_name = func.__name__
+        
+        # Log the function's arguments
+        arg_names = inspect.getfullargspec(func).args
+        inputs = {name: arg for name, arg in zip(arg_names, args)}
+        inputs.update(kwargs)
+        
+        print(f"Function '{func_name}' called with inputs: {inputs}")
+        
+        return func(*args, **kwargs)  # Call the original function
+    return wrapper

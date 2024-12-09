@@ -29,8 +29,9 @@ from qsub.quantum_algorithms.differential_equation_solvers.linearization_methods
 )
 
 import matplotlib.pyplot as plt
-from qsub.utils import calculate_max_of_solution_norm
+from qsub.utils import calculate_max_of_solution_norm , log_function_inputs
 
+@log_function_inputs
 def generate_graphs(
     evolution_time=0.0001,
     failure_tolerance=1e-1,
@@ -123,6 +124,7 @@ def generate_graphs(
     )
 
     drag_est = LBMDragEstimation(estimate_amplitude=amplitude_estimation_alg)
+
     drag_est.set_requirements(
         evolution_time=evolution_time,
         relative_estimation_error=relative_estimation_error,
@@ -146,7 +148,7 @@ def generate_graphs(
 
     # Run the solver and get the query count
     drag_est.run_profile(verbose=False)
-    drag_est.print_profile()
+    # drag_est.print_profile()
 
     counts = drag_est.count_subroutines()
 
@@ -154,8 +156,7 @@ def generate_graphs(
 
     return counts["t_gate"], n_qubits
 
-# failure_tolerance_values = [0.001, 0.01, 0.05]
-failure_tolerance_values = [0.01]
+failure_tolerance_values = [0.001, 0.01, 0.05]
 grid_points = [5120.00, 5120000.00, 40960000000.00]
 fluid_nodes = [5.116*10**3,5.116*10*6, 4.093*10**10]
 evolution_times = [43.33 , 240.72 , 7703.04]
@@ -186,7 +187,6 @@ markers = ['x', '+', 'v']
 # Tolerances and Reynolds numbers
 tolerances = list(resources.keys())
 reynolds_numbers = [1, 20, 500]
-
 
 
 
