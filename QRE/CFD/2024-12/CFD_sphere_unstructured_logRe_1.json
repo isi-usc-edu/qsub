@@ -1,0 +1,21 @@
+{
+    "id": "Sphere-Re-10",
+    "name": "Incompressible-CFD",
+    "category": "scientific",
+    "size": 640000.0,
+    "task": "Estimate drag force with 0.05 failure tolerance",
+    "implementation": "CL-LBM + Berry2017 + PsiQuantum_QLSA + DragMeasurable",
+    "value": 0,
+    "value_ci": [
+        0,
+        0
+    ],
+    "repetitions": 1,
+    "logical-abstract": {
+        "num_qubits": 7963.0,
+        "t_count": 3.1774670447624706e+23
+    },
+    "timestamp": "2024-05-14T10:44:31.390257",
+    "uuid": null,
+    "comments": "Verification instance: flow around a sphere at different Reynolds Numbers (Re). Size is number of LBM grid points n. https://github.com/isi-usc-edu/utility-estimation-models/tree/main/CFD"
+}
