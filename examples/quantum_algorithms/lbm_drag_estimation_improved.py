@@ -30,6 +30,7 @@ import matplotlib.pyplot as plt
 from qsub.utils import calculate_max_of_solution_norm, num_grid_nodes
 import pandas as pd
 import json
+from pprint import pprint
 
 
 CONFIG = {
@@ -57,6 +58,7 @@ UTILITY_SCALE_CONFIG = {
 
 
 new_instances = True
+structured_block_encodings = False
 df = pd.read_csv("problem_instance_parameters_and_results_20241203_newsphere.xlsx - one-sheet.csv")
 df.set_index("Parameter", inplace=True)
 delta_t = df.loc["delta_t"]
@@ -105,17 +107,17 @@ def calculate_drag_force(cell_volume, sphere_radius, time_discretization):
 
 def setup_quantum_solver(number_of_spatial_grid_points, config):
     """Set up quantum encodings and solvers."""
-    linear_encoding = LBMLinearTermBlockEncoding()
+    linear_encoding = LBMLinearTermBlockEncoding(structured=structured_block_encodings)
     linear_encoding.set_requirements(
         number_of_spatial_grid_points=number_of_spatial_grid_points, 
         number_of_velocity_grid_points= config["number_of_velocity_grid_points"])
 
-    quadratic_encoding = LBMQuadraticTermBlockEncoding()
+    quadratic_encoding = LBMQuadraticTermBlockEncoding(structured=structured_block_encodings)
     quadratic_encoding.set_requirements(
         number_of_spatial_grid_points=number_of_spatial_grid_points, 
         number_of_velocity_grid_points=config["number_of_velocity_grid_points"])
 
-    cubic_encoding = LBMCubicTermBlockEncoding()
+    cubic_encoding = LBMCubicTermBlockEncoding(structured=structured_block_encodings)
     cubic_encoding.set_requirements(
             number_of_spatial_grid_points=number_of_spatial_grid_points, 
             number_of_velocity_grid_points=config["number_of_velocity_grid_points"])
@@ -214,9 +216,11 @@ for error in failure_tolerance_values:
     if new_instances:
         evol_times = utility_scale_evolution_times
         t_discretizations = utility_time_discretizations
+        config_used = UTILITY_SCALE_CONFIG
     else:
         evol_times = evolution_times
         t_discretizations = time_discretizations
+        config_used = CONFIG
     for grid, evol_time, fluid_node, dt in zip(grid_points, evol_times, n_fluid_nodes, t_discretizations):
         t_counts, n_qubits = estimate_quantum_resources(
             number_of_spatial_grid_points=grid,
@@ -225,14 +229,14 @@ for error in failure_tolerance_values:
             fluid_nodes=fluid_node,
             uniform_density_deviation=0.001,
             relative_estimation_error=0.1,
-            config=UTILITY_SCALE_CONFIG,
+            config=config_used,
             time_discretization_in_seconds= dt
         )
         resources[error].append((t_counts, n_qubits))
 
 tolerances = list(resources.keys())
 
-print(resources)
+pprint(resources)
 
 # Function to set up common plot parameters
 def configure_plot_settings():
@@ -390,8 +394,8 @@ def generate_qb_estimates_json_files(resources, reynold_numbers, size, block_enc
             }
             qb_estimates["comments"] = "Verification instance: flow around a sphere at different Reynolds Numbers (Re).  Utility estimate: $0. Size is number of LBM grid points n."
 
-            with open(f"../../QRE/CFD/2024-12/CFD_sphere_{block_encoding_type}_logRe_{re}.json", "w") as json_file:
+            with open(f"../../QRE/CFD/2025-01/CFD_sphere_{block_encoding_type}_logRe_{re}.json", "w") as json_file:
                 json.dump(qb_estimates, json_file)
     
 
-# generate_qb_estimates_json_files(resources, reynolds_numbers, size, "un_structured")
+generate_qb_estimates_json_files(resources, reynolds_numbers, size, "un_structured")
