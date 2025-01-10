@@ -1,7 +1,5 @@
 import numpy as np
-
 from qsub.subroutine_model import SubroutineModel
-
 from qsub.quantum_algorithms.general_quantum_algorithms.linear_systems import (
     TaylorQLSA,
 )
@@ -65,6 +63,9 @@ delta_t = df.loc["delta_t"]
 nf = df.loc["n_f"]
 num_points = df.loc["num_points"]
 evolution_times = df.loc["T lattice_evolution_time_Scale"]
+matrix_norm_upperbound = float(df.loc["||A||_2", "Sphere Re=10^3"])
+
+
 if new_instances:
     utility_time_discretizations = list(map(float, delta_t.loc["Sphere Re=10^1":].values.tolist()))
     utility_scale_evolution_times = list(map(float, evolution_times.loc["Sphere Re=10^1":].values.tolist()))
@@ -127,7 +128,9 @@ def setup_quantum_solver(number_of_spatial_grid_points, config):
     carleman_encoding.set_requirements(
         kappa_P=config['kappa_P'], 
         mu_P_A=config['mu_P_A'], 
-        A_stable=config['A_stable']
+        A_stable=config['A_stable'],
+        matrix_norm_upperbound=matrix_norm_upperbound
+
     )
 
     taylor_ode = TaylorQuantumODESolver(
@@ -135,7 +138,8 @@ def setup_quantum_solver(number_of_spatial_grid_points, config):
         )
     taylor_ode.set_requirements(
         solve_linear_system=TaylorQLSA(), 
-        ode_matrix_block_encoding=carleman_encoding
+        ode_matrix_block_encoding=carleman_encoding,
+        matrix_norm_upperbound=matrix_norm_upperbound
     )
     return taylor_ode
 
@@ -159,7 +163,6 @@ def estimate_quantum_resources(evolution_time,
             cell_volume, config["sphere_radius_in_meters"], config["time_discretization_in_seconds"]
         )
     elif time_discretization_in_seconds is not None:
-        print("time discreet : ", time_discretization_in_seconds)
         rough_drag_force = calculate_drag_force(
             cell_volume, config["sphere_radius_in_meters"], time_discretization_in_seconds
         )
@@ -190,6 +193,7 @@ def estimate_quantum_resources(evolution_time,
         solve_quantum_ode=taylor_ode_solver,
         number_of_spatial_grid_points=number_of_spatial_grid_points,
         **config,
+        matrix_norm_upperbound=matrix_norm_upperbound,
         time_discretization_in_seconds= time_discretization_in_seconds,
         mark_drag_vector=LBMDragCoefficientsReflection(),
     )
@@ -390,4 +394,4 @@ def generate_qb_estimates_json_files(resources, reynold_numbers, size, block_enc
                 json.dump(qb_estimates, json_file)
     
 
-generate_qb_estimates_json_files(resources, reynolds_numbers, size, "structured")
+# generate_qb_estimates_json_files(resources, reynolds_numbers, size, "un_structured")
