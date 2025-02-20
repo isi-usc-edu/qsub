@@ -57,8 +57,8 @@ UTILITY_SCALE_CONFIG = {
 
 
 
-new_instances = True
-structured_block_encodings = False
+new_instances = False
+structured_block_encodings = True
 df = pd.read_csv("problem_instance_parameters_and_results_20241203_newsphere.xlsx - one-sheet.csv")
 df.set_index("Parameter", inplace=True)
 delta_t = df.loc["delta_t"]
@@ -84,8 +84,7 @@ else:
     n_fluid_nodes = list(map(float, nf.loc[["Sphere Re=1", "Sphere Re=20", "Sphere Re=500"]].values.tolist()))
     size = list(map(float, num_points.loc[["Sphere Re=1", "Sphere Re=20", "Sphere Re=500"]].values.tolist()))
     grid_points, _, _ = num_grid_nodes(reynolds_numbers,[CONFIG['x_length_in_meters'], CONFIG['y_length_in_meters'], CONFIG['z_length_in_meters']])
-# n_fluid_nodes = [5.116*10**3,5.116*10*6, 4.093*10**10]
-# evolution_times = [43.33 , 240.72 , 7703.04]
+
 
 
 def calculate_cell_volume(number_of_spatial_grid_points, config):
@@ -203,6 +202,8 @@ def estimate_quantum_resources(evolution_time,
     # Run the solver and collect results
     drag_estimation.run_profile(verbose=False)
     # drag_estimation.print_profile()
+    drag_estimation.plot_graph()
+
     counts = drag_estimation.count_subroutines()
     n_qubits = drag_estimation.count_qubits()
     return counts["t_gate"], n_qubits
@@ -260,6 +261,7 @@ def plot_tolerance_vs_resources(resources, tolerances, reynolds_numbers, ylabel,
             ax.scatter(
                 tolerance,
                 value,
+                s=100,
                 color=dark_colors[reynolds_idx % len(dark_colors)],
                 marker=markers[reynolds_idx % len(markers)],
                 label=f'Re {reynolds}' if tol_idx == 0 else ""
@@ -275,7 +277,7 @@ def plot_tolerance_vs_resources(resources, tolerances, reynolds_numbers, ylabel,
     plt.show()
 
 # Function to plot T-gate Counts vs Number of Qubits for different Reynolds numbers
-def plot_t_counts_vs_qubits(resources, tolerances, reynolds_numbers):
+def plot_t_counts_vs_qubits(resources, tolerances, reynolds_numbers, block_encoding_type:str=None):
     fig, axes = plt.subplots(1, len(reynolds_numbers), figsize=(18, 6), sharey=True)
     dark_colors = ['#000000', '#8B0000', '#00008B', '#006400', '#008B8B', '#8B008B']
     markers = ['x', 'o', '^', 's', 'p', '*']
@@ -287,11 +289,12 @@ def plot_t_counts_vs_qubits(resources, tolerances, reynolds_numbers):
             ax.scatter(
                 num_qubits,
                 t_counts,
+                s=100,
                 color=dark_colors[tol_idx % len(dark_colors)],
                 marker=markers[tol_idx % len(markers)],
                 label=f'Tolerance={tolerance}'
             )
-        ax.set_title(f'Reynolds={reynolds}')
+        ax.set_title(f'Reynolds={reynolds} '+ block_encoding_type)
         ax.set_xlabel('Number of Qubits')
         ax.set_yscale('log')
         ax.legend(title="Failure Tolerance")
@@ -302,7 +305,7 @@ def plot_t_counts_vs_qubits(resources, tolerances, reynolds_numbers):
     plt.show()
 
 # Function to plot (T-gate counts × Qubits) vs Qubits for different Reynolds numbers
-def plot_t_counts_times_qubits(resources, tolerances, reynolds_numbers):
+def plot_t_counts_times_qubits(resources, tolerances, reynolds_numbers, block_encoding_type:str=None):
     fig, axes = plt.subplots(1, len(reynolds_numbers), figsize=(18, 6), sharey=True)
     dark_colors = ['#000000', '#8B0000', '#00008B', '#006400', '#008B8B', '#8B008B']
     markers = ['x', 'o', '^', 's', 'p', '*']
@@ -315,11 +318,12 @@ def plot_t_counts_times_qubits(resources, tolerances, reynolds_numbers):
             ax.scatter(
                 num_qubits,
                 product_t_counts_qubits,
+                s=100,
                 color=dark_colors[tol_idx % len(dark_colors)],
                 marker=markers[tol_idx % len(markers)],
                 label=f'Tolerance={tolerance}'
             )
-        ax.set_title(f'Reynolds={reynolds}')
+        ax.set_title(f'Reynolds={reynolds} ' + block_encoding_type)
         ax.set_xlabel('Number of Qubits')
         ax.set_yscale('log')
         ax.legend(title="Failure Tolerance")
@@ -332,29 +336,44 @@ def plot_t_counts_times_qubits(resources, tolerances, reynolds_numbers):
 # Main function to generate all plots
 def generate_plots(resources, tolerances, reynolds_numbers):
     configure_plot_settings()
+    structure=''
+    if structured_block_encodings:
+        structure = '(Bespoke Blocking Encodings)'
+    else:
+        structure = '(Un-structured Block Encodings)'
+
     # Plot T-gate Counts vs Failure Tolerance
     plot_tolerance_vs_resources(
         resources, 
         tolerances, 
         reynolds_numbers,
         ylabel='$T$ Gate Counts',
-        title='$T$ Gate Counts vs Failure Tolerance',
+        title='$T$ Gate Counts vs Failure Tolerance '+ structure,
         resource_key="t_gate"
     )
     # Plot Number of Qubits vs Failure Tolerance
     plot_tolerance_vs_resources(
-        resources, tolerances, reynolds_numbers,
+        resources, 
+        tolerances, 
+        reynolds_numbers,
         ylabel='Number of Qubits',
-        title='Number of Qubits vs Failure Tolerance',
+        title='Number of Qubits vs Failure Tolerance '+ structure,
         resource_key="qubits"
     )
     # Plot T-gate Counts vs Number of Qubits
-    plot_t_counts_vs_qubits(resources, tolerances, reynolds_numbers)
+    plot_t_counts_vs_qubits(resources, 
+                            tolerances, 
+                            reynolds_numbers, 
+                            block_encoding_type=structure
+    )
     # Plot (T-gate Counts × Qubits) vs Qubits
-    plot_t_counts_times_qubits(resources, tolerances, reynolds_numbers)
+    plot_t_counts_times_qubits(resources, 
+                               tolerances, 
+                               reynolds_numbers,
+                               block_encoding_type= structure
+    )
 
-# Call the main plotting function
-# generate_plots(resources, failure_tolerance_values, reynolds_numbers)
+
 
 def generate_qb_estimates_json_files(resources, reynold_numbers, size, block_encoding_type):
 
@@ -397,5 +416,8 @@ def generate_qb_estimates_json_files(resources, reynold_numbers, size, block_enc
             with open(f"../../QRE/CFD/2025-01/CFD_sphere_{block_encoding_type}_logRe_{re}.json", "w") as json_file:
                 json.dump(qb_estimates, json_file)
     
+# Call the main plotting function
+# generate_plots(resources, failure_tolerance_values, reynolds_numbers)
 
-generate_qb_estimates_json_files(resources, reynolds_numbers, size, "un_structured")
+# Generating json files for DARPA reporting
+# generate_qb_estimates_json_files(resources, reynolds_numbers, size, "un_structured")
