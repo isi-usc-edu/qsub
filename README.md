@@ -7,7 +7,7 @@ The `qsub` package is a Python framework designed for expressing complex quantum
 
 1. **Clone the Repository:**
    ```
-   git clone git@github.com:zapatacomputing/qsub.git
+   git clone https://github.com/isi-usc-edu/qsub.git
    ```
 
 2. **Navigate to the Cloned Directory:**
