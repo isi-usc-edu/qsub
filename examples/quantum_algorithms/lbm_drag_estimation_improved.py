@@ -58,7 +58,7 @@ UTILITY_SCALE_CONFIG = {
 
 
 new_instances = True
-structured_block_encodings = False
+structured_block_encodings = True
 df = pd.read_csv("problem_instance_parameters_and_results_20241203_newsphere.xlsx - one-sheet.csv")
 df.set_index("Parameter", inplace=True)
 delta_t = df.loc["delta_t"]
@@ -72,7 +72,7 @@ if new_instances:
     utility_time_discretizations = list(map(float, delta_t.loc["Sphere Re=10^1":].values.tolist()))
     utility_scale_evolution_times = list(map(float, evolution_times.loc["Sphere Re=10^1":].values.tolist()))
     reynolds_numbers = [10, 10**2, 10**3, 10**4, 10**5, 10**6, 10**7, 10**8]
-    failure_tolerance_values = [0.05]
+    failure_tolerance_values = [0.05, 0.1, 0.15]
     n_fluid_nodes = list(map(float, nf.loc["Sphere Re=10^1":].values.tolist()))
     size = list(map(float, num_points.loc["Sphere Re=10^1":].values.tolist()))
     grid_points, _, _ = num_grid_nodes(reynolds_numbers,[UTILITY_SCALE_CONFIG['x_length_in_meters'], UTILITY_SCALE_CONFIG['y_length_in_meters'], UTILITY_SCALE_CONFIG['z_length_in_meters']])
@@ -309,7 +309,7 @@ def plot_tolerance_vs_resources(resources, tolerances, reynolds_numbers, ylabel,
             )
 
         ax.set_yscale('log')
-        ax.set_xlabel('Failure Tolerance')
+        ax.set_xlabel('Failure tolerance')
         ax.set_ylabel(ylabel)
         ax.set_title(f'Re={reynolds}')
         ax.grid(True)
@@ -349,13 +349,13 @@ def plot_t_counts_vs_qubits(resources, tolerances, reynolds_numbers, block_encod
                 label=f'Tolerance={tolerance}'
             )
         ax.set_yscale('log')
-        ax.set_xlabel('Number of Qubits')
+        ax.set_xlabel('Number of qubits')
         ax.set_title(f'Reynolds={reynolds} ' + (block_encoding_type or ''))
         ax.grid(True)
-        ax.legend(title="Failure Tolerance")
+        ax.legend(title="Failure tolerance")
 
     # Set shared Y-axis label on first subplot
-    axes[0][0].set_ylabel('$T$ Gate Counts')
+    axes[0][0].set_ylabel('$T$-gate Counts')
 
     # Remove any empty subplots
     for empty_idx in range(num_reynolds, num_rows * num_cols):
@@ -363,7 +363,7 @@ def plot_t_counts_vs_qubits(resources, tolerances, reynolds_numbers, block_encod
         fig.delaxes(axes[r][c])
 
     # Global title and layout
-    fig.suptitle('T-gate Counts vs. number of qubits ' + (block_encoding_type or ''), fontsize=16)
+    fig.suptitle('T-gate counts vs. number of qubits ' + (block_encoding_type or ''), fontsize=16)
     plt.tight_layout()
     plt.show()
 
@@ -492,11 +492,11 @@ def generate_qb_estimates_json_files(resources, reynold_numbers, size, block_enc
             }
             qb_estimates["comments"] = "Verification instance: flow around a sphere at different Reynolds Numbers (Re).  Utility estimate: $0. Size is number of LBM grid points n."
 
-            with open(f"../../QRE/CFD/2025-01/CFD_sphere_{block_encoding_type}_logRe_{re}.json", "w") as json_file:
+            with open(f"../../QRE/CFD/2025-06/CFD_sphere_{block_encoding_type}_logRe_{re}.json", "w") as json_file:
                 json.dump(qb_estimates, json_file)
     
 # Call the main plotting function
 generate_plots(resources, failure_tolerance_values, reynolds_numbers)
 
 # Generating json files for DARPA reporting
-# generate_qb_estimates_json_files(resources, reynolds_numbers, size, "un_structured")
+# generate_qb_estimates_json_files(resources, reynolds_numbers, size, "structured")
