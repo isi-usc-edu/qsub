@@ -46,6 +46,7 @@ class CarlemanBlockEncoding(GenericBlockEncoding):
         kappa_P: float = None,
         mu_P_A: float = None,
         A_stable: bool = None,
+        matrix_norm_upperbound:float=None
     ):
         args = locals()
         # Clean up the args dictionary before setting requirements

@@ -63,6 +63,7 @@ class TaylorQuantumODESolver(SubroutineModel):
         ode_matrix_block_encoding: SubroutineModel = None,
         prepare_inhomogeneous_term_vector: SubroutineModel = None,
         prepare_initial_vector: SubroutineModel = None,
+        matrix_norm_upperbound: float=None
     ):
         args = locals()
         # Clean up the args dictionary before setting requirements
@@ -99,11 +100,14 @@ class TaylorQuantumODESolver(SubroutineModel):
                 self.requirements["norm_inhomogeneous_term_vector"],
                 self.requirements["norm_x_t"],
                 self.requirements["A_stable"],
+                self.requirements["matrix_norm_upperbound"]
             )
         )
 
         # Set number of calls to the amplify amplitude task to one
-        self.amplify_amplitude.number_of_times_called = 1
+        # (Amara.K: Should be 1/state_preparation_probability 5/5/2025)
+        self.amplify_amplitude.number_of_times_called = 1/state_preparation_probability
+    
 
         # Set amp amp requirements
         self.amplify_amplitude.set_requirements(
@@ -182,6 +186,7 @@ def get_state_preparation_overlap_of_ode_final_state(
     norm_inhomogeneous_term_vector,
     norm_x_t,
     A_stable,
+    matrix_norm_upperbound
 ):
     """
     Compute the state preparation probability for the final time state of the ODE solver according to Eq. 18 of https://arxiv.org/abs/2309.07881.
@@ -203,19 +208,27 @@ def get_state_preparation_overlap_of_ode_final_state(
 
     # Compute the Taylor truncation
     taylor_truncation = compute_ode_taylor_truncation(
-        evolution_time, epsilon_td, norm_inhomogeneous_term_vector, norm_x_t
+        evolution_time, epsilon_td, 
+        norm_inhomogeneous_term_vector, 
+        norm_x_t,
+        matrix_norm_upperbound
     )
 
     # Set the idling parameter p
     idling_parameter = set_ode_idling_parameter(
-        evolution_time, taylor_truncation, A_stable
+        evolution_time, 
+        taylor_truncation, 
+        A_stable,
+        matrix_norm_upperbound
+        
     )
 
     # Compute success probability Pr_F from Eq. 18 of https://arxiv.org/abs/2309.07881
     K = (3 - math.exp(1)) ** 2 if norm_inhomogeneous_term_vector != 0 else 1
+    n_time_steps = evolution_time/matrix_norm_upperbound
     state_preparation_probability = 1 / (
         (1 - (I_0_2 - 1) / ((idling_parameter + 1) * K))
-        + (evolution_time + 1)
+        + (n_time_steps+ 1)
         * (I_0_2 - 1)
         / ((idling_parameter + 1) * K)
         * ((1 + epsilon_td) / (1 - epsilon_td)) ** 2
@@ -226,29 +239,26 @@ def get_state_preparation_overlap_of_ode_final_state(
 
 
 def compute_ode_taylor_truncation(
-    evolution_time, epsilon_td, norm_inhomogeneous_term_vector, norm_x_t
+    evolution_time, epsilon_td, norm_inhomogeneous_term_vector, norm_x_t,
+    matrix_norm_upperbound
 ):
-    x_star = max(
-        evolution_time
-        * math.exp(3)
-        / epsilon_td
-        * (
-            1 + evolution_time * math.exp(2) * norm_inhomogeneous_term_vector / norm_x_t
-        ),
-        10,
-    )
+    n_time_steps= evolution_time/matrix_norm_upperbound
+    x_star =  n_time_steps* math.exp(3)/epsilon_td*( 1 + evolution_time * math.exp(2) * 
+                            norm_inhomogeneous_term_vector / norm_x_t
+                            )
     return math.ceil(
         (3 * math.log(x_star) / 2 + 1) / math.log(1 + math.log(x_star) / 2) - 1
     )
 
 
-def set_ode_idling_parameter(evolution_time, taylor_truncation, A_stable):
+def set_ode_idling_parameter(evolution_time, taylor_truncation, A_stable, matrix_norm_upperbound):
+    n_time_steps= evolution_time/matrix_norm_upperbound
     if A_stable:
-        return math.ceil(math.sqrt(evolution_time) / (taylor_truncation + 1)) * (
+        return math.ceil(math.sqrt(n_time_steps) / (taylor_truncation + 1)) * (
             taylor_truncation + 1
         )
     else:
-        return math.ceil(evolution_time / (taylor_truncation + 1)) * (
+        return math.ceil(n_time_steps/ (taylor_truncation + 1)) * (
             taylor_truncation + 1
         )
 
@@ -386,15 +396,18 @@ class ODEHistoryBlockEncoding(SubroutineModel):
 
     def get_subnormalization(self):
         subnormalization_of_A = self.block_encode_ode_matrix.get_subnormalization()
+        matrix_norm_upperbound = self.block_encode_ode_matrix.requirements["matrix_norm_upperbound"]
         taylor_truncation = compute_ode_taylor_truncation(
             self.requirements["evolution_time"],
             self.requirements["epsilon_td"],
             self.requirements["norm_inhomogeneous_term_vector"],
             self.requirements["norm_x_t"],
+            matrix_norm_upperbound
         )
         # Calculation of history block encoding subnormalization
         # from Step 4 of Theorem 2 in https://arxiv.org/abs/2309.07881
-        omega_L = (1 + math.sqrt(taylor_truncation + 1) + subnormalization_of_A) / (
+        time_step = 1/matrix_norm_upperbound
+        omega_L = (1 + math.sqrt(taylor_truncation + 1) + subnormalization_of_A*time_step) / (
             math.sqrt(taylor_truncation + 1) + 2
         )
         return omega_L
@@ -410,12 +423,20 @@ class ODEHistoryBlockEncoding(SubroutineModel):
         kappa_P = self.block_encode_ode_matrix.requirements["kappa_P"]
         mu_P_A = self.block_encode_ode_matrix.requirements["mu_P_A"]
         A_stable = self.block_encode_ode_matrix.requirements["A_stable"]
+        matrix_norm_upperbound = self.block_encode_ode_matrix.requirements["matrix_norm_upperbound"]
 
         taylor_truncation = compute_ode_taylor_truncation(
-            evolution_time, epsilon_td, norm_inhomogeneous_term_vector, norm_x_t
+            evolution_time, 
+            epsilon_td, 
+            norm_inhomogeneous_term_vector, 
+            norm_x_t,
+            matrix_norm_upperbound
         )
         idling_parameter = set_ode_idling_parameter(
-            evolution_time, taylor_truncation, A_stable
+            evolution_time, 
+            taylor_truncation, 
+            A_stable,
+            matrix_norm_upperbound
         )
 
         kappa_L = compute_history_matrix_condition_number(
@@ -425,6 +446,8 @@ class ODEHistoryBlockEncoding(SubroutineModel):
             idling_parameter,
             kappa_P,
             mu_P_A,
+            matrix_norm_upperbound,
+            A_stable
         )
 
         return kappa_L
@@ -436,12 +459,21 @@ class ODEHistoryBlockEncoding(SubroutineModel):
             "norm_inhomogeneous_term_vector"
         ]
         norm_x_t = self.requirements["norm_x_t"]
+        matrix_norm_upperbound = self.block_encode_ode_matrix.requirements["matrix_norm_upperbound"]
         taylor_truncation = compute_ode_taylor_truncation(
-            evolution_time, epsilon_td, norm_inhomogeneous_term_vector, norm_x_t
+            evolution_time, 
+            epsilon_td, 
+            norm_inhomogeneous_term_vector, 
+            norm_x_t,
+            matrix_norm_upperbound
+
         )
         A_stable = self.block_encode_ode_matrix.requirements["A_stable"]
         idling_parameter = set_ode_idling_parameter(
-            evolution_time, taylor_truncation, A_stable
+            evolution_time, 
+            taylor_truncation, 
+            A_stable,
+            matrix_norm_upperbound
         )
 
         # From Step 10 in Theorem 2 of https://arxiv.org/abs/2309.07881
@@ -466,6 +498,8 @@ def compute_history_matrix_condition_number(
     idling_parameter,
     kappa_P,
     mu_P_A,
+    matrix_norm_upperbound,
+    A_stable
 ):
     """
     Compute the condition number of the history matrix according
@@ -484,6 +518,14 @@ def compute_history_matrix_condition_number(
     """
 
     I_0_2 = 2.2796  # Approximation of I_0(2)
+    n_time_steps = evolution_time/matrix_norm_upperbound
+    time_step = 1/matrix_norm_upperbound
+    C_max = 1  # Example value for C_max
+    n_time_steps = evolution_time/matrix_norm_upperbound
+    p = idling_parameter  # Example value for p
+    I_0_2 = 2.2796  # Approximation of I_0(2)
+    c_plus =1
+    kappa_L = 0
 
     g_k = sum(
         [
@@ -496,29 +538,40 @@ def compute_history_matrix_condition_number(
         ]
     )
 
-    kappa_L = math.sqrt(
-        (
-            (1 + epsilon_td) ** 2
-            * (1 + g_k)
-            * kappa_P
-            * (
-                idling_parameter
-                * (1 - math.exp(2 * evolution_time * mu_P_A + 2 * mu_P_A))
-                / (1 - math.exp(2 * mu_P_A))
-                + I_0_2
+    if A_stable:
+
+        kappa_L = math.sqrt(
+            (
+                (1 + epsilon_td) ** 2
+                * (1 + g_k)
+                * kappa_P
                 * (
-                    math.exp(2 * mu_P_A * (evolution_time + 2))
-                    + evolution_time
-                    + 1
-                    - math.exp(2 * mu_P_A) * (2 + evolution_time)
+                    idling_parameter
+                    * (1 - math.exp(2 * evolution_time * mu_P_A + 2 * mu_P_A*time_step))
+                    / (1 - math.exp(2 * mu_P_A*time_step))
+                    + I_0_2
+                    * (
+                        math.exp(2 * mu_P_A * (evolution_time + 2*time_step))
+                        + n_time_steps
+                        + 1
+                        - math.exp(2 * mu_P_A*time_step) * (2 + n_time_steps)
+                    )
+                    / ((1 - math.exp(2 * time_step*mu_P_A)) ** 2)
+                    + idling_parameter * (idling_parameter + 1) / 2
+                    + (idling_parameter + n_time_steps * taylor_truncation) * (I_0_2 - 1)
                 )
-                / ((1 - math.exp(2 * mu_P_A)) ** 2)
-                + idling_parameter * (idling_parameter + 1) / 2
-                + (idling_parameter + evolution_time * taylor_truncation) * (I_0_2 - 1)
             )
+            * (math.sqrt(taylor_truncation + 1) + 2)
         )
-        * (math.sqrt(taylor_truncation + 1) + 2)
-    )
+    else:
+        term1 = math.sqrt(taylor_truncation + 1) + 2
+        term2 = (epsilon_td / c_plus)
+        term3 = 1 + term2
+        term4 = 1 + g_k * (n_time_steps + 1) * (p + I_0_2 * (n_time_steps / 2 + 1))
+        term5 = (p * (p + 1)) / 2
+        term6 = (p + n_time_steps * taylor_truncation) * (I_0_2 - 1)
+        inner_expression = C_max**2*term3**2 * (term4 + term5 + term6)
+        kappa_L = term1 * math.sqrt(inner_expression)
 
     return kappa_L
 
