@@ -1,5 +1,5 @@
 import numpy as np
-from qsub.subroutine_model import SubroutineModel
+# from qsub.subroutine_model import SubroutineModel
 from qsub.quantum_algorithms.general_quantum_algorithms.linear_systems import (
     TaylorQLSA,
 )
@@ -57,8 +57,8 @@ UTILITY_SCALE_CONFIG = {
 
 
 
-new_instances = False
-structured_block_encodings = True
+new_instances = True
+structured_block_encodings = False
 df = pd.read_csv("problem_instance_parameters_and_results_20241203_newsphere.xlsx - one-sheet.csv")
 df.set_index("Parameter", inplace=True)
 delta_t = df.loc["delta_t"]
@@ -201,8 +201,8 @@ def estimate_quantum_resources(evolution_time,
 
     # Run the solver and collect results
     drag_estimation.run_profile(verbose=False)
-    # drag_estimation.print_profile()
-    drag_estimation.plot_graph()
+    drag_estimation.print_profile()
+    # drag_estimation.plot_graph()
 
     counts = drag_estimation.count_subroutines()
     n_qubits = drag_estimation.count_qubits()
@@ -237,55 +237,109 @@ for error in failure_tolerance_values:
 
 tolerances = list(resources.keys())
 
-pprint(resources)
+# pprint(resources)
 
 # Function to set up common plot parameters
 def configure_plot_settings():
-    plt.rcParams.update({'font.size': 12})  # General font size
-    plt.rcParams.update({'axes.titlesize': 12})  # Title font size
-    plt.rcParams.update({'axes.labelsize': 12})  # Axis labels font size
+    plt.rcParams.update({'font.size': 10})  # General font size
+    plt.rcParams.update({'axes.titlesize': 10})  # Title font size
+    plt.rcParams.update({'axes.labelsize': 10})  # Axis labels font size
     plt.rcParams.update({'xtick.labelsize': 8})  # X-tick labels font size
     plt.rcParams.update({'ytick.labelsize': 12})  # Y-tick labels font size
-    plt.rcParams.update({'legend.fontsize': 12})  # Legend font size
+    plt.rcParams.update({'legend.fontsize': 10})  # Legend font size
 
 # Function to plot T-gate Counts or Number of Qubits vs Failure Tolerance
+# def plot_tolerance_vs_resources(resources, tolerances, reynolds_numbers, ylabel, title, resource_key):
+#     num_reynolds = len(reynolds_numbers)
+#     num_cols = 3  # e.g., 3 plots per row
+#     num_rows = (num_reynolds + num_cols - 1) // num_cols  # ceiling division
+#     fig, ax = plt.subplots(figsize=(10, 6),figsize=(3, 2), squeeze=False)
+#     dark_colors = ['#000000', '#8B0000', '#00008B', '#006400', '#008B8B', '#8B008B']
+#     markers = ['x', '+', 'v']
+
+#     for tol_idx, tolerance in enumerate(tolerances):
+#         row = tol_idx // num_cols
+#         col = tol_idx % num_cols
+#         ax = ax[row][col]
+#         for reynolds_idx, reynolds in enumerate(reynolds_numbers):
+#             t_counts, num_qubits = resources[tolerance][reynolds_idx]
+#             value = t_counts if resource_key == "t_gate" else num_qubits
+#             ax.scatter(
+#                 tolerance,
+#                 value,
+#                 s=100,
+#                 color=dark_colors[reynolds_idx % len(dark_colors)],
+#                 marker=markers[reynolds_idx % len(markers)],
+#                 label=f'Re {reynolds}' if tol_idx == 0 else ""
+#             )
+
+#     ax.set_yscale('log')
+#     ax.set_xlabel('Failure Tolerance')
+#     ax.set_ylabel(ylabel)
+#     ax.set_title(title)
+#     ax.grid(True)
+#     ax.legend(title='Reynolds Number')
+#     plt.tight_layout()
+#     plt.show()
+
 def plot_tolerance_vs_resources(resources, tolerances, reynolds_numbers, ylabel, title, resource_key):
-    fig, ax = plt.subplots(figsize=(10, 6))
+    num_reynolds = len(reynolds_numbers)
+    num_cols = 3  # e.g., 3 plots per row
+    num_rows = (num_reynolds + num_cols - 1) // num_cols  # ceiling division
+
+    fig, axes = plt.subplots(num_rows, num_cols, figsize=(5*num_cols, 5*num_rows), squeeze=False)
     dark_colors = ['#000000', '#8B0000', '#00008B', '#006400', '#008B8B', '#8B008B']
     markers = ['x', '+', 'v']
 
-    for tol_idx, tolerance in enumerate(tolerances):
-        for reynolds_idx, reynolds in enumerate(reynolds_numbers):
-            t_counts, num_qubits = resources[tolerance][reynolds_idx]
+    for idx, reynolds in enumerate(reynolds_numbers):
+        row = idx // num_cols
+        col = idx % num_cols
+        ax = axes[row][col]
+
+        for tol_idx, tolerance in enumerate(tolerances):
+            t_counts, num_qubits = resources[tolerance][idx]
             value = t_counts if resource_key == "t_gate" else num_qubits
             ax.scatter(
                 tolerance,
                 value,
                 s=100,
-                color=dark_colors[reynolds_idx % len(dark_colors)],
-                marker=markers[reynolds_idx % len(markers)],
-                label=f'Re {reynolds}' if tol_idx == 0 else ""
+                color=dark_colors[tol_idx % len(dark_colors)],
+                marker=markers[tol_idx % len(markers)],
+                label=f'Tolerance={tolerance}'
             )
 
-    ax.set_yscale('log')
-    ax.set_xlabel('Failure Tolerance')
-    ax.set_ylabel(ylabel)
-    ax.set_title(title)
-    ax.grid(True)
-    ax.legend(title='Reynolds Number')
+        ax.set_yscale('log')
+        ax.set_xlabel('Failure Tolerance')
+        ax.set_ylabel(ylabel)
+        ax.set_title(f'Re={reynolds}')
+        ax.grid(True)
+        ax.legend()
+
+    # Remove empty plots if reynolds_numbers doesn't fill all grid
+    for idx in range(num_reynolds, num_rows*num_cols):
+        fig.delaxes(axes[idx//num_cols][idx%num_cols])
+
+    fig.suptitle(title, fontsize=16)
     plt.tight_layout()
     plt.show()
 
 # Function to plot T-gate Counts vs Number of Qubits for different Reynolds numbers
-def plot_t_counts_vs_qubits(resources, tolerances, reynolds_numbers, block_encoding_type:str=None):
-    fig, axes = plt.subplots(1, len(reynolds_numbers), figsize=(18, 6), sharey=True)
+def plot_t_counts_vs_qubits(resources, tolerances, reynolds_numbers, block_encoding_type: str = None):
+    # Determine grid size
+    num_reynolds = len(reynolds_numbers)
+    num_cols = 3  # Number of columns in the grid
+    num_rows = (num_reynolds + num_cols - 1) // num_cols
+
+    # Create subplots grid
+    fig, axes = plt.subplots(num_rows, num_cols, figsize=(6 * num_cols, 5 * num_rows), sharey=True, squeeze=False)
     dark_colors = ['#000000', '#8B0000', '#00008B', '#006400', '#008B8B', '#8B008B']
     markers = ['x', 'o', '^', 's', 'p', '*']
 
-    for i, reynolds in enumerate(reynolds_numbers):
-        ax = axes[i]
+    for idx, reynolds in enumerate(reynolds_numbers):
+        row, col = divmod(idx, num_cols)
+        ax = axes[row][col]
         for tol_idx, tolerance in enumerate(tolerances):
-            t_counts, num_qubits = resources[tolerance][i]
+            t_counts, num_qubits = resources[tolerance][idx]
             ax.scatter(
                 num_qubits,
                 t_counts,
@@ -294,26 +348,42 @@ def plot_t_counts_vs_qubits(resources, tolerances, reynolds_numbers, block_encod
                 marker=markers[tol_idx % len(markers)],
                 label=f'Tolerance={tolerance}'
             )
-        ax.set_title(f'Reynolds={reynolds} '+ block_encoding_type)
-        ax.set_xlabel('Number of Qubits')
         ax.set_yscale('log')
-        ax.legend(title="Failure Tolerance")
+        ax.set_xlabel('Number of Qubits')
+        ax.set_title(f'Reynolds={reynolds} ' + (block_encoding_type or ''))
         ax.grid(True)
+        ax.legend(title="Failure Tolerance")
 
-    axes[0].set_ylabel('$T$ Gate Counts')
+    # Set shared Y-axis label on first subplot
+    axes[0][0].set_ylabel('$T$ Gate Counts')
+
+    # Remove any empty subplots
+    for empty_idx in range(num_reynolds, num_rows * num_cols):
+        r, c = divmod(empty_idx, num_cols)
+        fig.delaxes(axes[r][c])
+
+    # Global title and layout
+    fig.suptitle('T-gate Counts vs. number of qubits ' + (block_encoding_type or ''), fontsize=16)
     plt.tight_layout()
     plt.show()
 
 # Function to plot (T-gate counts × Qubits) vs Qubits for different Reynolds numbers
-def plot_t_counts_times_qubits(resources, tolerances, reynolds_numbers, block_encoding_type:str=None):
-    fig, axes = plt.subplots(1, len(reynolds_numbers), figsize=(18, 6), sharey=True)
+def plot_t_counts_times_qubits(resources, tolerances, reynolds_numbers, block_encoding_type: str = None):
+    # Determine grid size
+    num_reynolds = len(reynolds_numbers)
+    num_cols = 3  # Number of columns in the grid
+    num_rows = (num_reynolds + num_cols - 1) // num_cols
+
+    # Create subplots grid
+    fig, axes = plt.subplots(num_rows, num_cols, figsize=(6 * num_cols, 5 * num_rows), sharey=True, squeeze=False)
     dark_colors = ['#000000', '#8B0000', '#00008B', '#006400', '#008B8B', '#8B008B']
     markers = ['x', 'o', '^', 's', 'p', '*']
 
-    for i, reynolds in enumerate(reynolds_numbers):
-        ax = axes[i]
+    for idx, reynolds in enumerate(reynolds_numbers):
+        row, col = divmod(idx, num_cols)
+        ax = axes[row][col]
         for tol_idx, tolerance in enumerate(tolerances):
-            t_counts, num_qubits = resources[tolerance][i]
+            t_counts, num_qubits = resources[tolerance][idx]
             product_t_counts_qubits = t_counts * num_qubits
             ax.scatter(
                 num_qubits,
@@ -323,13 +393,22 @@ def plot_t_counts_times_qubits(resources, tolerances, reynolds_numbers, block_en
                 marker=markers[tol_idx % len(markers)],
                 label=f'Tolerance={tolerance}'
             )
-        ax.set_title(f'Reynolds={reynolds} ' + block_encoding_type)
-        ax.set_xlabel('Number of Qubits')
         ax.set_yscale('log')
-        ax.legend(title="Failure Tolerance")
+        ax.set_xlabel('Number of qubits')
+        ax.set_title(f'Reynolds={reynolds} ' + (block_encoding_type or ''))
         ax.grid(True)
+        ax.legend(title="Failure tolerance")
 
-    axes[0].set_ylabel('$T$ Counts × Number of Qubits')
+    # Set shared Y-axis label on first subplot
+    axes[0][0].set_ylabel('$T$ counts × number of qubits')
+
+    # Remove any empty subplots
+    for empty_idx in range(num_reynolds, num_rows * num_cols):
+        r, c = divmod(empty_idx, num_cols)
+        fig.delaxes(axes[r][c])
+
+    # Global title and layout
+    fig.suptitle('T-gate counts × qubits vs. number of qubits ' + (block_encoding_type or ''), fontsize=16)
     plt.tight_layout()
     plt.show()
 
@@ -338,17 +417,17 @@ def generate_plots(resources, tolerances, reynolds_numbers):
     configure_plot_settings()
     structure=''
     if structured_block_encodings:
-        structure = '(Bespoke Blocking Encodings)'
+        structure = '(bespoke blocking encodings)'
     else:
-        structure = '(Un-structured Block Encodings)'
+        structure = '(unstructured block encodings)'
 
     # Plot T-gate Counts vs Failure Tolerance
     plot_tolerance_vs_resources(
         resources, 
         tolerances, 
         reynolds_numbers,
-        ylabel='$T$ Gate Counts',
-        title='$T$ Gate Counts vs Failure Tolerance '+ structure,
+        ylabel='$T$-gate counts',
+        title='$T$-gate counts vs failure tolerance '+ structure,
         resource_key="t_gate"
     )
     # Plot Number of Qubits vs Failure Tolerance
@@ -356,8 +435,8 @@ def generate_plots(resources, tolerances, reynolds_numbers):
         resources, 
         tolerances, 
         reynolds_numbers,
-        ylabel='Number of Qubits',
-        title='Number of Qubits vs Failure Tolerance '+ structure,
+        ylabel='Number of qubits',
+        title='Number of qubits vs failure tolerance '+ structure,
         resource_key="qubits"
     )
     # Plot T-gate Counts vs Number of Qubits
@@ -417,7 +496,7 @@ def generate_qb_estimates_json_files(resources, reynold_numbers, size, block_enc
                 json.dump(qb_estimates, json_file)
     
 # Call the main plotting function
-# generate_plots(resources, failure_tolerance_values, reynolds_numbers)
+generate_plots(resources, failure_tolerance_values, reynolds_numbers)
 
 # Generating json files for DARPA reporting
 # generate_qb_estimates_json_files(resources, reynolds_numbers, size, "un_structured")

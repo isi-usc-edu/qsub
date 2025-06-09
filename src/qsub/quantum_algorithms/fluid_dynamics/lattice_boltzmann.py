@@ -495,7 +495,7 @@ class LBMLinearTermBlockEncoding(GenericBlockEncoding):
             n_f1_tgates = 465.2 + 13.8*np.log2(1/self.requirements["failure_tolerance"]) 
         else:
             n_f1_tgates = 635 * np.log2(
-                555 / self.requirements["failure_tolerance"]
+                729 / self.requirements["failure_tolerance"]
             ) 
         n_spatial_qubits = np.log2(self.requirements["number_of_spatial_grid_points"])
         n_streaming_tgates = 12 * n_spatial_qubits**2 + 32 * n_spatial_qubits + 12*(n_spatial_qubits-1) 
@@ -584,7 +584,7 @@ class LBMQuadraticTermBlockEncoding(GenericBlockEncoding):
             -16 + 2* log_n_spatial_qubits_squared*(log_n_spatial_qubits_squared-1)
         else:
             # un structure equations for t gates
-            self.t_gate.number_of_times_called  = 8*log_n_spatial_qubits_squared + 2.3*5187*np.log2(5187/self.requirements["failure_tolerance"])
+            self.t_gate.number_of_times_called  = 8*log_n_spatial_qubits_squared + 2.3*15180*np.log2(15180/self.requirements["failure_tolerance"])
             -16 + 2* log_n_spatial_qubits_squared*(log_n_spatial_qubits_squared-1)
 
         # Set t_gate requirements

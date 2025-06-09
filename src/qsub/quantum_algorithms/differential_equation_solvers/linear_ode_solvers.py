@@ -105,7 +105,9 @@ class TaylorQuantumODESolver(SubroutineModel):
         )
 
         # Set number of calls to the amplify amplitude task to one
-        self.amplify_amplitude.number_of_times_called = 1
+        # (Amara.K: Should be 1/state_preparation_probability 5/5/2025)
+        self.amplify_amplitude.number_of_times_called = 1/state_preparation_probability
+    
 
         # Set amp amp requirements
         self.amplify_amplitude.set_requirements(

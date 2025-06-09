@@ -51,7 +51,7 @@ Lchar = 0.01
 Re = 20
 try:
     result = num_grid_nodes(Re, Lxyz, Lchar)
-    print(f"The ratio is: {result}")
+    # print(f"The ratio is: {result}")
 except ValueError as e:
     print(e)
     
@@ -59,7 +59,7 @@ except ValueError as e:
 Re = [1,20,500]
 try:
     result = num_grid_nodes(Re, Lxyz, Lchar)
-    print(f"The ratio is: {result}")
+    # print(f"The ratio is: {result}")
 except ValueError as e:
     print(e)
 
